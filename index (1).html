@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0f14">
+<title>PulseFit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14; --surface: #161a22; --surface-2: #1e232e; --line: rgba(255,255,255,.08);
+    --text: #F3F5F9; --muted: #A3A9BA;
+    --lime: #C6F432; --cyan: #38D5F2; --coral: #FF6B4A; --violet: #9B8CFF;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: #07080c; color: var(--text); font-family: 'Sora', system-ui, sans-serif; display: flex; align-items: center; justify-content: center; -webkit-text-size-adjust: 100%; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--lime); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+
+  #app { position: relative; width: 100%; max-width: 420px; height: 100dvh; background: var(--bg); display: flex; flex-direction: column; overflow: hidden; }
+  @media (min-width: 481px) { #app { height: min(860px, calc(100dvh - 32px)); border-radius: 40px; border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(0,0,0,.6); } }
+
+  header { display: flex; align-items: center; justify-content: space-between; padding: 22px 22px 8px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; }
+  header h1 { margin: 2px 0 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+  .avatar { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #0d0f14; background: linear-gradient(135deg, var(--lime), var(--cyan)); }
+
+  main { flex: 1; overflow-y: auto; padding: 8px 22px 24px; scrollbar-width: none; }
+  main::-webkit-scrollbar { display: none; }
+  .view { display: grid; gap: 16px; }
+  h2 { margin: 6px 0 0; font-size: 16px; font-weight: 700; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 18px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+  /* Rings */
+  .rings { display: grid; grid-template-columns: 150px minmax(0,1fr); gap: 18px; align-items: center; }
+  .rings svg { width: 150px; height: 150px; transform: rotate(-90deg); }
+  .track { fill: none; stroke: var(--surface-2); stroke-width: 11; }
+  .bar { fill: none; stroke-width: 11; stroke-linecap: round; transition: stroke-dashoffset .9s cubic-bezier(.2,.8,.2,1); }
+  .legend { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+  .legend li { display: grid; grid-template-columns: 10px minmax(0,1fr); gap: 4px 10px; align-items: center; }
+  .legend i { width: 10px; height: 10px; border-radius: 50%; }
+  .legend b { font-size: 17px; font-weight: 700; }
+  .legend small { grid-column: 2; color: var(--muted); font-size: 12px; margin-top: -4px; }
+  @media (max-width: 360px) { .rings { grid-template-columns: 1fr; justify-items: center; } }
+
+  /* Video preview */
+  .video { position: relative; border-radius: 20px; aspect-ratio: 16/9; overflow: hidden; display: grid; place-items: center; }
+  .video::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,.55)); }
+  .video .play { position: relative; z-index: 1; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.92); color: #0d0f14; border: 0; }
+  .video .badge { position: absolute; z-index: 1; left: 12px; bottom: 10px; font-size: 12px; font-weight: 600; }
+  .g-strength { background: radial-gradient(circle at 20% 20%, #FF9A5A, transparent 55%), linear-gradient(135deg, #B8321B, #3A1030); }
+  .g-cardio { background: radial-gradient(circle at 80% 20%, #38D5F2, transparent 55%), linear-gradient(135deg, #0B5E8A, #14143a); }
+  .g-yoga { background: radial-gradient(circle at 30% 80%, #C6F432, transparent 55%), linear-gradient(135deg, #2F7A4F, #0f2a2a); }
+
+  .btn { min-height: 46px; padding: 0 20px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-2); font-weight: 700; }
+  .btn.primary { background: var(--lime); color: #0d0f14; border-color: transparent; }
+  .btn.block { width: 100%; }
+
+  .mini { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+  .mini .card { padding: 14px 10px; text-align: center; }
+  .mini b { display: block; font-size: 20px; font-weight: 800; margin-top: 6px; }
+  .mini svg { margin: 0 auto; }
+
+  /* Workouts */
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+  .chip { flex: none; min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-size: 14px; font-weight: 600; color: var(--muted); }
+  .chip[aria-pressed="true"] { background: var(--lime); color: #0d0f14; border-color: transparent; }
+  .wk { display: grid; grid-template-columns: 104px minmax(0,1fr); gap: 14px; align-items: center; width: 100%; text-align: left; padding: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; }
+  .wk .video { aspect-ratio: 1; border-radius: 16px; }
+  .wk .video .play { width: 38px; height: 38px; }
+  .wk h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; }
+  .tag { display: inline-block; margin-top: 8px; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); font-size: 12px; font-weight: 600; }
+
+  /* Calendar */
+  .cal-head { display: flex; align-items: center; justify-content: space-between; }
+  .cal { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 6px; text-align: center; }
+  .cal .dow { font-size: 11px; color: var(--muted); padding-bottom: 4px; }
+  .day { position: relative; aspect-ratio: 1; min-height: 40px; border-radius: 12px; border: 1px solid transparent; background: transparent; font-weight: 600; font-size: 14px; }
+  .day.plan { background: var(--surface-2); }
+  .day.done::after, .day.plan::after { content: ""; position: absolute; left: 50%; bottom: 5px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--muted); }
+  .day.done::after { background: var(--lime); }
+  .day.today { border-color: var(--lime); }
+  .day[aria-pressed="true"] { background: var(--lime); color: #0d0f14; }
+  .day[aria-pressed="true"]::after { background: #0d0f14; }
+  .day:disabled { visibility: hidden; }
+
+  /* Stats */
+  .chart { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 10px; align-items: end; height: 150px; margin-top: 14px; }
+  .col { display: grid; gap: 8px; justify-items: center; align-content: end; height: 100%; }
+  .col i { display: block; width: 100%; max-width: 30px; border-radius: 10px 10px 6px 6px; background: var(--surface-2); }
+  .col.on i { background: linear-gradient(180deg, var(--lime), #6FA312); }
+  .col span { font-size: 11px; color: var(--muted); }
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+  .grid2 b { display: block; font-size: 22px; font-weight: 800; margin-top: 4px; }
+  .prog { height: 8px; border-radius: 99px; background: var(--surface-2); margin-top: 10px; overflow: hidden; }
+  .prog i { display: block; height: 100%; border-radius: 99px; }
+
+  /* Bottom nav */
+  nav { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); padding: 8px 10px calc(10px + env(safe-area-inset-bottom)); background: rgba(22,26,34,.96); border-top: 1px solid var(--line); }
+  nav button { display: grid; justify-items: center; gap: 4px; min-height: 52px; padding: 6px 0; background: none; border: 0; border-radius: 14px; font-size: 11px; font-weight: 600; color: var(--muted); }
+  nav button[aria-current="page"] { color: var(--lime); }
+
+  /* Workout player sheet */
+  .sheet { position: absolute; inset: 0; z-index: 10; background: var(--bg); display: flex; flex-direction: column; padding: 22px; gap: 18px; overflow-y: auto; animation: up .28s ease; }
+  @keyframes up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .sheet .top { display: flex; align-items: center; justify-content: space-between; }
+  .icon-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; }
+  .stepring { position: relative; width: 220px; height: 220px; margin: 6px auto 0; }
+  .stepring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .stepring .center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+  .stepring .center b { font-size: 46px; font-weight: 800; line-height: 1; }
+  .exercise { text-align: center; }
+  .exercise h3 { margin: 0; font-size: 24px; font-weight: 800; }
+  .exercise p { margin: 6px 0 0; color: var(--lime); font-weight: 600; }
+  .dots { display: flex; justify-content: center; gap: 6px; }
+  .dots i { width: 22px; height: 6px; border-radius: 99px; background: var(--surface-2); }
+  .dots i.on { background: var(--lime); }
+  .done-box { text-align: center; display: grid; gap: 10px; justify-items: center; padding-top: 30px; }
+  .done-box h3 { margin: 0; font-size: 26px; font-weight: 800; }
+  .toast { position: absolute; left: 22px; right: 22px; bottom: 88px; z-index: 20; padding: 12px 16px; border-radius: 14px; background: var(--lime); color: #0d0f14; font-weight: 700; font-size: 14px; text-align: center; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div>
+      <p id="greet">Good evening</p>
+      <h1>Let's move, Alex</h1>
+    </div>
+    <div class="avatar" aria-hidden="true">A</div>
+  </header>
+
+  <main id="main" tabindex="-1">
+
+    <!-- HOME -->
+    <section class="view" id="view-home" aria-label="Home">
+      <div class="card rings">
+        <svg viewBox="0 0 160 160" role="img" aria-label="Daily activity rings">
+          <circle class="track" cx="80" cy="80" r="68"/><circle class="bar" id="rSteps" cx="80" cy="80" r="68" stroke="#C6F432"/>
+          <circle class="track" cx="80" cy="80" r="52"/><circle class="bar" id="rCal" cx="80" cy="80" r="52" stroke="#FF6B4A"/>
+          <circle class="track" cx="80" cy="80" r="36"/><circle class="bar" id="rMin" cx="80" cy="80" r="36" stroke="#38D5F2"/>
+        </svg>
+        <ul class="legend">
+          <li><i style="background:var(--lime)"></i><b id="tSteps">0</b><small>of 10,000 steps</small></li>
+          <li><i style="background:var(--coral)"></i><b id="tCal">0</b><small>of 600 kcal</small></li>
+          <li><i style="background:var(--cyan)"></i><b id="tMin">0</b><small>of 45 active min</small></li>
+        </ul>
+      </div>
+
+      <h2>Today's workout</h2>
+      <div class="card">
+        <div class="video g-strength">
+          <button class="play" type="button" data-start="0" aria-label="Preview Full Body Burn"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button>
+          <span class="badge">Preview · 0:45</span>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <div><b style="font-size:18px">Full Body Burn</b><div class="muted">30 min · 280 kcal · Strength</div></div>
+        </div>
+        <button class="btn primary block" type="button" data-start="0" style="margin-top:14px">Start workout</button>
+      </div>
+
+      <h2>Health today</h2>
+      <div class="mini">
+        <div class="card"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FF6B4A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 5.6a5.5 5.5 0 0 0-7.8 0L12 6.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 22l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"/></svg><b>68</b><span class="muted">bpm</span></div>
+        <div class="card"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9B8CFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg><b>7.4h</b><span class="muted">sleep</span></div>
+        <div class="card"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38D5F2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.7S5 10 5 15a7 7 0 0 0 14 0c0-5-7-12.3-7-12.3Z"/></svg><b>1.6L</b><span class="muted">water</span></div>
+      </div>
+    </section>
+
+    <!-- WORKOUTS -->
+    <section class="view" id="view-workouts" aria-label="Workouts" hidden>
+      <div class="chips" id="chips" role="group" aria-label="Filter workouts"></div>
+      <div class="view" id="wkList"></div>
+    </section>
+
+    <!-- PLAN -->
+    <section class="view" id="view-plan" aria-label="Workout plan" hidden>
+      <div class="card">
+        <div class="cal-head"><h2 id="monthTitle" style="margin:0">Month</h2><span class="muted">Mon · Wed · Fri · Sat</span></div>
+        <div class="cal" id="cal" style="margin-top:14px"></div>
+      </div>
+      <div class="card" id="dayCard"></div>
+    </section>
+
+    <!-- STATS -->
+    <section class="view" id="view-stats" aria-label="Health statistics" hidden>
+      <div class="card">
+        <div class="row"><b>Calories this week</b><span class="muted" id="weekTotal"></span></div>
+        <div class="chart" id="chart" role="img" aria-label="Bar chart of calories burned this week"></div>
+      </div>
+      <div class="grid2">
+        <div class="card"><span class="muted">Weight</span><b>72.4 kg</b><span class="muted">Goal 70 kg</span><div class="prog"><i style="width:68%;background:var(--violet)"></i></div></div>
+        <div class="card"><span class="muted">Resting HR</span><b>62 bpm</b><span class="muted">Down 3 this month</span><div class="prog"><i style="width:80%;background:var(--coral)"></i></div></div>
+        <div class="card"><span class="muted">Workouts</span><b>4 / 5</b><span class="muted">Weekly goal</span><div class="prog"><i style="width:80%;background:var(--lime)"></i></div></div>
+        <div class="card"><span class="muted">Streak</span><b>9 days</b><span class="muted">Personal best 14</span><div class="prog"><i style="width:64%;background:var(--cyan)"></i></div></div>
+      </div>
+    </section>
+  </main>
+
+  <nav aria-label="Primary">
+    <button type="button" data-tab="home" aria-current="page"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 3l9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/></svg>Home</button>
+    <button type="button" data-tab="workouts"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg>Workouts</button>
+    <button type="button" data-tab="plan"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>Plan</button>
+    <button type="button" data-tab="stats"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Stats</button>
+  </nav>
+
+  <!-- Workout player -->
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden></div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</div>
+
+<script>
+(function () {
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+
+  var GOALS = { steps: 10000, cal: 600, min: 45 };
+  var state = { steps: 6420, cal: 420, min: 28 };
+
+  var STEPS = {
+    strength: [['Squats', '12 reps'], ['Push-ups', '10 reps'], ['Reverse lunges', '12 per leg'], ['Glute bridge', '15 reps'], ['Plank hold', '40 seconds'], ['Mountain climbers', '30 seconds']],
+    cardio:   [['Jumping jacks', '45 seconds'], ['High knees', '30 seconds'], ['Burpees', '10 reps'], ['Skater hops', '30 seconds'], ['Sprint in place', '20 seconds'], ['Cool-down walk', '60 seconds']],
+    yoga:     [['Cat-cow', '8 breaths'], ['Downward dog', '5 breaths'], ['Warrior II', '5 breaths per side'], ['Cobra pose', '5 breaths'], ['Seated twist', '5 breaths per side'], ["Child's pose", '8 breaths']]
+  };
+  var WORKOUTS = [
+    { name: 'Full Body Burn', type: 'strength', label: 'Strength', min: 30, kcal: 280 },
+    { name: 'HIIT Blast', type: 'cardio', label: 'Cardio', min: 25, kcal: 320 },
+    { name: 'Morning Flow', type: 'yoga', label: 'Yoga', min: 20, kcal: 120 },
+    { name: 'Core Crusher', type: 'strength', label: 'Strength', min: 15, kcal: 150 },
+    { name: 'Easy Run Intervals', type: 'cardio', label: 'Cardio', min: 35, kcal: 360 }
+  ];
+  var PLAN = { 1: 0, 3: 1, 5: 3, 6: 4 }; // weekday -> workout index
+  var WEEK = [320, 410, 0, 380, 290, 460, 420]; // Mon..Sun sample calories
+
+  var PLAY = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+  var CIRC = {};
+
+  /* ---------- Rings ---------- */
+  function setRing(id, value, goal) {
+    var el = $(id), r = +el.getAttribute('r'), c = 2 * Math.PI * r;
+    el.style.strokeDasharray = c;
+    el.style.strokeDashoffset = c * (1 - Math.min(1, value / goal));
+  }
+  function renderRings() {
+    $('#tSteps').textContent = state.steps.toLocaleString('en-US');
+    $('#tCal').textContent = state.cal;
+    $('#tMin').textContent = state.min;
+    setRing('#rSteps', state.steps, GOALS.steps);
+    setRing('#rCal', state.cal, GOALS.cal);
+    setRing('#rMin', state.min, GOALS.min);
+  }
+
+  /* ---------- Greeting ---------- */
+  var h = new Date().getHours();
+  $('#greet').textContent = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+
+  /* ---------- Tabs ---------- */
+  function showTab(name) {
+    $$('.view').forEach(function (v) { if (v.id.indexOf('view-') === 0) v.hidden = v.id !== 'view-' + name; });
+    $$('nav button').forEach(function (b) {
+      if (b.dataset.tab === name) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+    $('#main').scrollTop = 0;
+    if (name === 'home') renderRings();
+  }
+  $$('nav button').forEach(function (b) { b.addEventListener('click', function () { showTab(b.dataset.tab); }); });
+
+  /* ---------- Workout list ---------- */
+  var filter = 'All';
+  var FILTERS = ['All', 'Strength', 'Cardio', 'Yoga'];
+  function renderChips() {
+    var box = $('#chips'); box.textContent = '';
+    FILTERS.forEach(function (f) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.textContent = f;
+      b.setAttribute('aria-pressed', String(f === filter));
+      b.addEventListener('click', function () { filter = f; renderChips(); renderList(); });
+      box.appendChild(b);
+    });
+  }
+  function renderList() {
+    var box = $('#wkList'); box.textContent = '';
+    WORKOUTS.forEach(function (w, i) {
+      if (filter !== 'All' && w.label !== filter) return;
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'wk'; b.dataset.start = i;
+      b.setAttribute('aria-label', 'Start ' + w.name);
+      b.innerHTML = '<div class="video g-' + w.type + '"><span class="play" aria-hidden="true">' + PLAY + '</span></div>' +
+        '<div><h3></h3><div class="muted"></div><span class="tag"></span></div>';
+      $('h3', b).textContent = w.name;
+      $('.muted', b).textContent = w.min + ' min · ' + w.kcal + ' kcal';
+      $('.tag', b).textContent = w.label;
+      box.appendChild(b);
+    });
+  }
+
+  /* ---------- Player ---------- */
+  var cur = null, step = 0, sheetFrom = null;
+  function openSheet(i) {
+    cur = WORKOUTS[i]; step = 0; sheetFrom = document.activeElement;
+    $('#sheet').hidden = false; drawSheet();
+    $('#sheet .icon-btn').focus();
+  }
+  function closeSheet() {
+    $('#sheet').hidden = true;
+    if (sheetFrom && document.body.contains(sheetFrom)) sheetFrom.focus();
+  }
+  function drawSheet() {
+    var list = STEPS[cur.type], total = list.length, sheet = $('#sheet');
+    var closeBtn = '<button class="icon-btn" type="button" id="closeSheet" aria-label="Close workout"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>';
+    if (step >= total) {
+      sheet.innerHTML = '<div class="top"><b id="sheetTitle">' + cur.name + '</b>' + closeBtn + '</div>' +
+        '<div class="done-box"><svg width="84" height="84" viewBox="0 0 24 24" fill="none" stroke="#C6F432" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m8 12.5 3 3 5-6"/></svg>' +
+        '<h3>Workout complete</h3><p class="muted">' + cur.min + ' active minutes · ' + cur.kcal + ' kcal burned</p>' +
+        '<button class="btn primary block" type="button" id="finish" style="margin-top:14px">Save and finish</button></div>';
+      $('#finish').addEventListener('click', function () {
+        state.cal += cur.kcal; state.min += cur.min;
+        closeSheet(); showTab('home'); toastMsg('Nice work. Rings updated.');
+      });
+    } else {
+      var r = 96, c = 2 * Math.PI * r, off = c * (1 - step / total);
+      sheet.innerHTML = '<div class="top"><b id="sheetTitle">' + cur.name + '</b>' + closeBtn + '</div>' +
+        '<div class="video g-' + cur.type + '" aria-hidden="true"><span class="badge">Exercise preview</span></div>' +
+        '<div class="stepring"><svg viewBox="0 0 220 220" aria-hidden="true"><circle class="track" cx="110" cy="110" r="' + r + '"/>' +
+        '<circle class="bar" cx="110" cy="110" r="' + r + '" stroke="#C6F432" style="stroke-dasharray:' + c + ';stroke-dashoffset:' + off + '"/></svg>' +
+        '<div class="center"><b>' + (step + 1) + '/' + total + '</b><span class="muted">step</span></div></div>' +
+        '<div class="exercise"><h3></h3><p></p></div><div class="dots" aria-hidden="true"></div>' +
+        '<div class="row"><button class="btn" type="button" id="prev"' + (step === 0 ? ' disabled style="opacity:.4"' : '') + '>Back</button>' +
+        '<button class="btn primary" type="button" id="next" style="flex:1">' + (step === total - 1 ? 'Finish' : 'Next exercise') + '</button></div>';
+      $('.exercise h3', sheet).textContent = list[step][0];
+      $('.exercise p', sheet).textContent = list[step][1];
+      var dots = $('.dots', sheet);
+      for (var k = 0; k < total; k++) { var d = document.createElement('i'); if (k <= step) d.className = 'on'; dots.appendChild(d); }
+      $('#next').addEventListener('click', function () { step++; drawSheet(); $('#next, #finish').focus(); });
+      $('#prev').addEventListener('click', function () { if (step > 0) { step--; drawSheet(); $('#next').focus(); } });
+    }
+    $('#closeSheet').addEventListener('click', closeSheet);
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-start]');
+    if (t) openSheet(+t.dataset.start);
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); });
+
+  var toastTimer;
+  function toastMsg(m) {
+    var t = $('#toast'); t.textContent = m; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 2800);
+  }
+
+  /* ---------- Calendar ---------- */
+  var now = new Date(), y = now.getFullYear(), m = now.getMonth(), sel = now.getDate();
+  function renderCal() {
+    $('#monthTitle').textContent = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    var cal = $('#cal'); cal.textContent = '';
+    ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(function (d) { var s = document.createElement('div'); s.className = 'dow'; s.textContent = d; s.setAttribute('aria-hidden', 'true'); cal.appendChild(s); });
+    var first = (new Date(y, m, 1).getDay() + 6) % 7, days = new Date(y, m + 1, 0).getDate();
+    for (var i = 0; i < first; i++) { var e = document.createElement('button'); e.disabled = true; e.className = 'day'; cal.appendChild(e); }
+    for (var d = 1; d <= days; d++) {
+      var date = new Date(y, m, d), wd = date.getDay(), planned = PLAN[wd] !== undefined;
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'day'; b.textContent = d; b.dataset.d = d;
+      if (planned) b.classList.add(d < now.getDate() ? 'done' : 'plan');
+      if (d === now.getDate()) b.classList.add('today');
+      b.setAttribute('aria-pressed', String(d === sel));
+      b.setAttribute('aria-label', date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + (planned ? ', workout planned' : ', rest day'));
+      b.addEventListener('click', function () { sel = +this.dataset.d; renderCal(); this.blur; var s = $('.day[data-d="' + sel + '"]'); if (s) s.focus(); });
+      cal.appendChild(b);
+    }
+    var card = $('#dayCard'), wd2 = new Date(y, m, sel).getDay(), idx = PLAN[wd2];
+    card.textContent = '';
+    var title = document.createElement('b');
+    title.textContent = new Date(y, m, sel).toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
+    card.appendChild(title);
+    if (idx === undefined) {
+      var p = document.createElement('p'); p.className = 'muted'; p.textContent = 'Rest day. Light stretching and a walk are enough.'; card.appendChild(p);
+    } else {
+      var w = WORKOUTS[idx];
+      var info = document.createElement('p'); info.className = 'muted'; info.textContent = w.name + ' · ' + w.min + ' min · ' + w.kcal + ' kcal'; card.appendChild(info);
+      if (sel >= now.getDate()) {
+        var s = document.createElement('button'); s.type = 'button'; s.className = 'btn primary block'; s.dataset.start = idx; s.textContent = 'Start workout'; card.appendChild(s);
+      } else {
+        var dn = document.createElement('p'); dn.style.color = 'var(--lime)'; dn.style.fontWeight = '700'; dn.textContent = 'Completed'; card.appendChild(dn);
+      }
+    }
+  }
+
+  /* ---------- Stats ---------- */
+  function renderChart() {
+    var max = Math.max.apply(null, WEEK), box = $('#chart'), today = (now.getDay() + 6) % 7, total = 0;
+    ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(function (d, i) {
+      total += WEEK[i];
+      var c = document.createElement('div'); c.className = 'col' + (i === today ? ' on' : '');
+      var bar = document.createElement('i'); bar.style.height = Math.max(6, WEEK[i] / max * 100) + '%';
+      var l = document.createElement('span'); l.textContent = d;
+      c.appendChild(bar); c.appendChild(l); box.appendChild(c);
+    });
+    $('#weekTotal').textContent = total.toLocaleString('en-US') + ' kcal';
+  }
+
+  renderChips(); renderList(); renderCal(); renderChart();
+  // animate rings in after first paint
+  requestAnimationFrame(function () { setTimeout(renderRings, 120); });
+})();
+</script>
+</body>
+</html>
